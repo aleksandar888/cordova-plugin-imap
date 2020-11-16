@@ -1,0 +1,26 @@
+<?xml version='1.0' encoding='utf-8'?>
+<plugin xmlns:android="http://schemas.android.com/apk/res/android" id="cordova-plugin-imap"
+    version="1.0.0" xmlns="http://apache.org/cordova/ns/plugins/1.0">
+    <name>Imap</name>
+
+    <lisence>ISC</lisence>
+
+    <js-module name="imap" src="www/Imap.js">
+        <clobbers target="imap" />
+    </js-module>
+
+    <platform name="android">
+        <config-file parent="/*" target="res/xml/config.xml">
+            <feature name="Imap">
+                <param name="android-package" value="Imap" />
+                <param name="onload" value="true" />
+            </feature>
+        </config-file>
+        <config-file parent="/*" target="AndroidManifest.xml">
+            <uses-permission android:name="android.permission.INTERNET" />
+        </config-file>
+        <framework src="com.sun.mail:android-mail:1.6.2" />
+        <framework src="com.sun.mail:android-activation:1.6.2" />
+        <source-file src="src/android/Imap.java" target-dir="src/cordova-plugin-imap/Imap" />
+    </platform>
+</plugin>

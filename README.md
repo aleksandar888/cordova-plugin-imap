@@ -1,0 +1,134 @@
+# Cordova IMAP plugin
+
+This plugin will enable a Cordova application to use the IMAP (Internet Message Access Protocol) features. <br/>
+This plugin is in Beta version and it offers support only for Android. <br/>
+The plugin uses [Java Mail API](https://javaee.github.io/javamail/).  <br/>
+Planned improvements and support for iOS.
+
+## Supported Platforms
+- Android
+
+## Installation
+
+Install the plugin by running:
+
+```
+cordova plugin add cordova-plugin-imap
+```
+
+## API
+
+ - connect([config](#config), success, error) - ([Connection](#connection)) - Tries to connect and authenticate with the IMAP server.
+ - disconnect(success, error) - (boolean) - Closes the connection with the server.
+ - isConnected(success, error) - (boolean) - Checks the current state of the connection.
+ - listMailFolders(success, error) - (string[]) - Lists the name of all the mail folders in the mailbox.
+ - getMessageCountByFolderName(folderName, success, error) - (number) - Gets the count of the messages in the folder.
+ - searchMessagesByDatePeriod(folderName, dateInMilliseconds, [comparison](#comparisonterm) : <code>enum</code>, success, error) - (number[]) - Returns the messages'
+ consecutive numbers.
+ - listMessagesHeadersByConsecutiveNumber(folderName, start, end, success, error) - ([Message](#message)[]) - Returns messages' headers data.
+ - listMessagesHeadersByDate(folderName, dateInMilliseconds, [comparison](#ComparisonTerm) : <code>enum</code>, success, error) - ([Message](#message)[]) - Returns messages' headers data.
+ - getFullMessageData(folderName, messageNumber, success, error) - ([Message](#message)) - Returns the full message's data inclucing its attachments.
+ - copyToFolder (sourceFolder, destinationFolder, messageNums, success, error) - (boolean) - Copy messages to a desired folder
+ - setFlag (folderName, messageNums, [flag](#flag) : <code>enum</code>, status, success, error) - ([ModificationResult](#modificationresult)) - Sets a flag on a message. 
+ This method can also be used for deleting messages.
+
+
+## Data types
+
+#### Config
+| Param | Type | Description |
+| --- | --- | --- |
+| host | <code>string</code> | Hostname or IP address of the IMAP service. |
+| user | <code>string</code> | Username or email address for authentication. |
+| password | <code>string</code> | Password for authentication. |
+
+#### Connection
+| Param | Type | Description |
+| --- | --- | --- |
+| status | <code>boolean</code> | Connection status. |
+| connection | <code>string</code> | Optional. Connection String result, returned when the connection is established successfully. |
+| exception | <code>string</code> | Optional. Exception details, in case an error occurs. |
+
+#### Message
+| Param | Type | Description |
+| --- | --- | --- |
+| messageNumber | <code>number</code> | Message consecutive number. |
+| folder | <code>string</code> | The name of the message's folder. |
+| from | <code>`Array<`[Address](#address)`>`</code> | Sender's data. |
+| allRecipients | <code>`Array<`[Address](#address)`>`</code> | Optional. All recipients data. |
+| toRecipients | <code>`Array<`[Address](#address)`>`</code> | TO recipients data. |
+| ccRecipients | <code>`Array<`[Address](#address)`>`</code> | CC recipients data. |
+| bccRecipients | <code>`Array<`[Address](#address)`>`</code> | BCC recipients data. |
+| replyTo | <code>`Array<`[Address](#address)`>`</code> | Optional. Reply data. |
+| sentDate | <code>string</code> | Optional. The date when the message was sent. |
+| receivedDate | <code>string</code> | The date when the message was received. |
+| subject | <code>string</code> | Message's subject. |
+| description | <code>string</code> | Optional. Short description. |
+| fileName | <code>string</code> | Optional. / |
+| disposition | <code>string</code> | Optional. / |
+| flags | <code>string</code> | Message's active flags |
+| lineCount | <code>number</code> | Optional. / |
+| allMessageHeaders | <code>object</code> | Optional. All Headers available on a message |
+| contentType | <code>string</code> | Optional. Type of message's content |
+| bodyContent | <code>`Array<`[Content](#content)`>`</code> | Optional. Message's body with its content and attachments. |
+| size | <code>number</code> | Optional. Message's memory size |
+
+#### Address
+| Param | Type | Description |
+| --- | --- | --- |
+| address | <code>string</code> | Email address |
+| personal | <code>string</code> | Optional. Name of the email address's owner. |
+| type | <code>string</code> | Data type |
+
+#### Content
+| Param | Type | Description |
+| --- | --- | --- |
+| type | <code>string</code> | Content data type |
+| fileName | <code>string</code> | Optional. The name of the file |
+| content | <code>string</code> | Message's content |
+
+#### ModificationResult
+| Param | Type | Description |
+| --- | --- | --- |
+| status | <code>boolean</code> | Status of the applied changes |
+| modifiedMessages | <code>`Array<number>`</code> | Array with consecutive numbers of modified messages |
+
+#### Flag : <code>enum</code>
+
+Defines a flag that can be added or removed from a message.
+
+**Kind**: static enum property of <code>flag</code>  
+**Available Flags**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| ANSWERED | <code>Flags.Flag</code> | "ANSWERED" message flag  |
+| DRAFT | <code>Flags.Flag</code> | "DRAFT" message flag |
+| FLAGGED | <code>Flags.Flag</code> | "FLAGGED" message flag |
+| RECENT | <code>Flags.Flag</code> | "RECENT" message flag |
+| SEEN | <code>Flags.Flag</code> | "SEEN" message flag |
+| USER | <code>Flags.Flag</code> | "USER" message flag |
+| DELETED | <code>Flags.Flag</code> | "DELETED" message flag. <code>Note:</code> Add this flag to delete the message from the mailbox |
+
+#### ComparisonTerm : <code>enum</code>
+Comparison Operators. Used for listing messages by date period.
+
+**Kind**: static enum property of <code>comparison</code>  
+**Available Operators**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| LE | <code>ReceivedDateTerm</code> | The less than or equal to operator.  |
+| LT | <code>ReceivedDateTerm</code> | The less than operator.  |
+| EQ | <code>ReceivedDateTerm</code> | The equality operator.  |
+| NE | <code>ReceivedDateTerm</code> | The not equal to operator.  |
+| GT | <code>ReceivedDateTerm</code> | The greater than operator.  |
+| GE | <code>ReceivedDateTerm</code> | The greater than or equal to operator.  |
+
+
+## License
+[ISC](https://choosealicense.com/licenses/isc/)
+
+## Thank you 
+Thank you for using this plugin. <br>
+If you have any suggestions on how we can improve the plugin (missing feature or bug...), feel free to contact us.
