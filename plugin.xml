@@ -3,6 +3,10 @@
     version="1.0.0" xmlns="http://apache.org/cordova/ns/plugins/1.0">
     <name>Imap</name>
 
+    <description>
+        This plugin will enable a Cordova application to use the IMAP (Internet Message Access Protocol) features.
+    </description>
+
     <lisence>ISC</lisence>
 
     <js-module name="imap" src="www/Imap.js">
