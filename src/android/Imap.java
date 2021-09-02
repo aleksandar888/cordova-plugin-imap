@@ -5,13 +5,12 @@ import org.apache.cordova.PluginResult.Status;
 import org.apache.cordova.PluginResult;
 
 import java.io.File;
+import java.io.IOException;
 
 import java.util.Arrays;
 import java.util.Properties;
-import java.util.concurrent.ExecutionException;
 import java.util.Date;
 import java.util.Properties;
-import java.util.stream.Collectors;
 import java.util.Enumeration;
 
 import org.json.JSONArray;
@@ -57,7 +56,9 @@ public class Imap extends CordovaPlugin {
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
         if (action.equals("connect")) {
-            this.connect(args, callbackContext);
+            JSONObject clientData = args.getJSONObject(0);
+
+            this.connect(clientData, callbackContext);
             return true;
         } else if (action.equals("disconnect")) {
             this.disconnect(callbackContext);
@@ -66,7 +67,9 @@ public class Imap extends CordovaPlugin {
             this.isConnected(callbackContext);
             return true;
         } else if (action.equals("listMailFolders")) {
-            this.listMailFolders(callbackContext);
+            String pattern = args.getString(0);
+
+            this.listMailFolders(pattern, callbackContext);
             return true;
         } else if (action.equals("getMessageCountByFolderName")) {
             String folderName = args.getString(0);
@@ -99,6 +102,13 @@ public class Imap extends CordovaPlugin {
             int mesNumber = Integer.parseInt(args.getString(1));
 
             this.getFullMessageData(folderName, mesNumber, callbackContext);
+            return true;
+        } else if (action.equals("getFullMessageDataOnNewSession")) {
+            JSONObject clientData = args.getJSONObject(0);
+            String folderName = args.getString(1);
+            int mesNumber = Integer.parseInt(args.getString(2));
+
+            this.getFullMessageDataOnNewSession(clientData, folderName, mesNumber, callbackContext);
             return true;
         } else if (action.equals("copyToFolder")) {
             String sourceFolder = args.getString(0);
@@ -267,6 +277,27 @@ public class Imap extends CordovaPlugin {
         }
     }
 
+    public static JSONArray serializeFlags(Flags flags) {
+        JSONArray flagsArray = new JSONArray();
+
+        if (flags.contains(Flags.Flag.ANSWERED))
+            flagsArray.put("Answered");
+        if (flags.contains(Flags.Flag.DELETED))
+            flagsArray.put("Deleted");
+        if (flags.contains(Flags.Flag.DRAFT))
+            flagsArray.put("Draft");
+        if (flags.contains(Flags.Flag.FLAGGED))
+            flagsArray.put("Flagged");
+        if (flags.contains(Flags.Flag.RECENT))
+            flagsArray.put("Recent");
+        if (flags.contains(Flags.Flag.SEEN))
+            flagsArray.put("Seen");
+        if (flags.contains(Flags.Flag.USER))
+            flagsArray.put("*");
+
+        return flagsArray;
+    }
+
     private static JSONArray parseMessagesHeaders(Message[] messages) throws MessagingException, JSONException {
         JSONArray resultData = new JSONArray();
 
@@ -281,7 +312,7 @@ public class Imap extends CordovaPlugin {
             message.put("bccRecipients", parseAddressHeader(mes.getRecipients(Message.RecipientType.BCC)));
             message.put("receivedDate", parseStringResult(mes.getReceivedDate()));
             message.put("subject", parseStringResult(mes.getSubject()));
-            message.put("flags", parseStringResult(mes.getFlags()));
+            message.put("flags", serializeFlags(mes.getFlags()));
 
             resultData.put(message);
         }
@@ -289,18 +320,46 @@ public class Imap extends CordovaPlugin {
         return resultData;
     }
 
-    private void connect(JSONArray clientData, CallbackContext callbackContext) {
+    private static JSONObject parseFullMessage(Message message) throws MessagingException, JSONException, IOException {
+        JSONObject resultData = new JSONObject();
+
+        resultData.put("messageNumber", message.getMessageNumber());
+        resultData.put("folder", parseStringResult(message.getFolder()));
+        resultData.put("from", parseAddressHeader(message.getFrom()));
+        resultData.put("allRecipients", parseAddressHeader(message.getAllRecipients()));
+        resultData.put("toRecipients", parseAddressHeader(message.getRecipients(Message.RecipientType.TO)));
+        resultData.put("ccRecipients", parseAddressHeader(message.getRecipients(Message.RecipientType.CC)));
+        resultData.put("bccRecipients", parseAddressHeader(message.getRecipients(Message.RecipientType.BCC)));
+        resultData.put("replyTo", parseAddressHeader(message.getReplyTo()));
+        resultData.put("sentDate", parseStringResult(message.getSentDate()));
+        resultData.put("receivedDate", parseStringResult(message.getReceivedDate()));
+        resultData.put("subject", parseStringResult(message.getSubject()));
+        resultData.put("description", parseStringResult(message.getDescription()));
+        resultData.put("fileName", parseStringResult(message.getFileName()));
+        resultData.put("disposition", parseStringResult(message.getDisposition()));
+        resultData.put("flags", serializeFlags(message.getFlags()));
+        resultData.put("lineCount", message.getLineCount());
+        resultData.put("allMessageHeaders", parseAllMessageHeaders(message));
+        resultData.put("contentType", parseStringResult(message.getContentType()));
+        resultData.put("bodyContent", getTextFromMimeMultipart(message.getContent(), message.getContentType()));
+        resultData.put("size", message.getSize());
+
+        return resultData;
+    }
+
+    private void connect(JSONObject clientData, CallbackContext callbackContext) {
         cordova.getThreadPool().execute(new Runnable() {
             public void run() {
                 try {
                     JSONObject resultData = new JSONObject();
 
                     if (clientData != null) {
-                        String host = clientData.getJSONObject(0).getString("host");
-                        String user = clientData.getJSONObject(0).getString("user");
-                        String password = clientData.getJSONObject(0).getString("password");
+                        String host = clientData.getString("host");
+                        int port = ((clientData.has("port") && !clientData.isNull("port"))) ? Integer.parseInt(clientData.getString("port")) : 993;
+                        String user = clientData.getString("user");
+                        String password = clientData.getString("password");
 
-                        store.connect(host, user, password);
+                        store.connect(host, port, user, password);
 
                         resultData.put("status", true);
                         resultData.put("connection", store.toString());
@@ -346,11 +405,11 @@ public class Imap extends CordovaPlugin {
         });
     }
 
-    private void listMailFolders(CallbackContext callbackContext) {
+    private void listMailFolders(String pattern, CallbackContext callbackContext) {
         cordova.getThreadPool().execute(new Runnable() {
             public void run() {
                 try {
-                    Folder[] folders = store.getDefaultFolder().list("*");
+                    Folder[] folders = store.getDefaultFolder().list(pattern);
 
                     JSONArray resultData = new JSONArray(Arrays.stream(folders).map(Folder::getFullName).toArray());
 
@@ -445,32 +504,46 @@ public class Imap extends CordovaPlugin {
                     Folder emailFolder = store.getFolder(folderName);
                     emailFolder.open(Folder.READ_ONLY);
 
-                    Message mes = emailFolder.getMessage(messageNumber);
+                    Message message = emailFolder.getMessage(messageNumber);
 
-                    JSONObject message = new JSONObject();
+                    callbackContext.success(parseFullMessage(message));
+                } catch (Exception ex) {
+                    callbackContext.error("Failed " + ex);
+                }
+            }
+        });
+    }
 
-                    message.put("messageNumber", mes.getMessageNumber());
-                    message.put("folder", parseStringResult(mes.getFolder()));
-                    message.put("from", parseAddressHeader(mes.getFrom()));
-                    message.put("allRecipients", parseAddressHeader(mes.getAllRecipients()));
-                    message.put("toRecipients", parseAddressHeader(mes.getRecipients(Message.RecipientType.TO)));
-                    message.put("ccRecipients", parseAddressHeader(mes.getRecipients(Message.RecipientType.CC)));
-                    message.put("bccRecipients", parseAddressHeader(mes.getRecipients(Message.RecipientType.BCC)));
-                    message.put("replyTo", parseAddressHeader(mes.getReplyTo()));
-                    message.put("sentDate", parseStringResult(mes.getSentDate()));
-                    message.put("receivedDate", parseStringResult(mes.getReceivedDate()));
-                    message.put("subject", parseStringResult(mes.getSubject()));
-                    message.put("description", parseStringResult(mes.getDescription()));
-                    message.put("fileName", parseStringResult(mes.getFileName()));
-                    message.put("disposition", parseStringResult(mes.getDisposition()));
-                    message.put("flags", parseStringResult(mes.getFlags()));
-                    message.put("lineCount", mes.getLineCount());
-                    message.put("allMessageHeaders", parseAllMessageHeaders(mes));
-                    message.put("contentType", parseStringResult(mes.getContentType()));
-                    message.put("bodyContent", getTextFromMimeMultipart(mes.getContent(), mes.getContentType()));
-                    message.put("size", mes.getSize());
+    private void getFullMessageDataOnNewSession(JSONObject clientData, String folderName, int messageNumber, CallbackContext callbackContext) {
+        cordova.getThreadPool().execute(new Runnable() {
+            public void run() {
+                try {
+                    String host = clientData.getString("host");
+                    int port = ((clientData.has("port") && !clientData.isNull("port"))) ? Integer.parseInt(clientData.getString("port")) : 993;
+                    String user = clientData.getString("user");
+                    String password = clientData.getString("password");
 
-                    callbackContext.success(message);
+                    Properties props = System.getProperties();
+                    props.setProperty("mail.store.protocol", "imaps");
+
+                    Session session = Session.getDefaultInstance(props, null);
+
+                    Store storeObj = session.getStore("imaps");
+
+                    try {
+                        storeObj.connect(host, port, user, password);
+
+                        Folder emailFolder = storeObj.getFolder(folderName);
+                        emailFolder.open(Folder.READ_ONLY);
+
+                        Message message = emailFolder.getMessage(messageNumber);
+
+                        callbackContext.success(parseFullMessage(message));
+                    } catch (Exception ex) {
+                        callbackContext.error("Failed " + ex);
+                    } finally {
+                        storeObj.close();
+                    }
                 } catch (Exception ex) {
                     callbackContext.error("Failed " + ex);
                 }
@@ -535,7 +608,7 @@ public class Imap extends CordovaPlugin {
                         callbackContext.error(resultData);
                     }
                 } catch (JSONException ex) {
-                    callbackContext.error("" + ex);
+                    callbackContext.error("Failed " + ex);
                 }
             }
         });

@@ -12,8 +12,8 @@ exports.isConnected = function (success, error) {
     exec(success, error, 'Imap', 'isConnected', []);
 };
 
-exports.listMailFolders = function (success, error) {
-    exec(success, error, 'Imap', 'listMailFolders', []);
+exports.listMailFolders = function (pattern, success, error) {
+    exec(success, error, 'Imap', 'listMailFolders', [pattern]);
 };
 
 exports.getMessageCountByFolderName = function (folderName, success, error) {
@@ -34,6 +34,10 @@ exports.listMessagesHeadersByDate = function (folderName, dateInMilliseconds,com
 
 exports.getFullMessageData = function (folderName, messageNumber, success, error) {
     exec(success, error, 'Imap', 'getFullMessageData', [folderName, messageNumber]);
+};
+
+exports.getFullMessageDataOnNewSession = function (config, folderName, messageNumber, success, error) {
+    exec(success, error, 'Imap', 'getFullMessageDataOnNewSession', [config, folderName, messageNumber]);
 };
 
 exports.copyToFolder = function (sourceFolder, destinationFolder, messageNums, success, error) {

@@ -1,10 +1,11 @@
 <?xml version='1.0' encoding='utf-8'?>
 <plugin xmlns:android="http://schemas.android.com/apk/res/android" id="cordova-plugin-imap"
-    version="1.0.0" xmlns="http://apache.org/cordova/ns/plugins/1.0">
+    version="1.1.0" xmlns="http://apache.org/cordova/ns/plugins/1.0">
     <name>Imap</name>
 
     <description>
-        This plugin will enable a Cordova application to use the IMAP (Internet Message Access Protocol) features.
+        This plugin will enable a Cordova application to use the
+        IMAP (Internet Message Access Protocol) features.
     </description>
 
     <lisence>ISC</lisence>
@@ -26,5 +27,26 @@
         <framework src="com.sun.mail:android-mail:1.6.2" />
         <framework src="com.sun.mail:android-activation:1.6.2" />
         <source-file src="src/android/Imap.java" target-dir="src/cordova-plugin-imap/Imap" />
+    </platform>
+
+    <platform name="ios">
+        <config-file target="config.xml" parent="/*">
+            <feature name="Imap">
+                <param name="ios-package" value="Imap"/>
+                <param name="onload" value="true"/>
+            </feature>
+        </config-file>
+        <framework src="CFNetwork.framework"/>
+        <framework src="Security.framework"/>
+        <podspec>
+            <config>
+                <source url="https://cdn.cocoapods.org"/>
+            </config>
+            <pods use-frameworks="true">
+                <pod name="mailcore2-ios" spec="0.6.4"/>
+            </pods>
+        </podspec>
+        <header-file src="src/ios/Imap.h"/>
+        <source-file src="src/ios/Imap.m"/>
     </platform>
 </plugin>
