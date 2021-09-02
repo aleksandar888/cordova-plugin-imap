@@ -122,7 +122,7 @@ cordova plugin add cordova-plugin-imap
 #### Flag : <code>enum</code>
 
 Defines a flag that can be added or removed from a message.
-####Note: Some flags are available only for a particular platform
+#### Note: Some flags are available only for a particular platform
 
 **Kind**: static enum property of <code>flag</code>  
 **Available Flags**
@@ -144,7 +144,7 @@ Defines a flag that can be added or removed from a message.
 #### ComparisonTerm : <code>enum</code>
 Comparison Operators. Used for listing messages by date period.
 
-####Note: Some operators are available only for a particular platform
+#### Note: Some operators are available only for a particular platform
 
 **Kind**: static enum property of <code>comparison</code>  
 **Available Operators**
