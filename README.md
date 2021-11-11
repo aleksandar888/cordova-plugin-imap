@@ -15,9 +15,43 @@ and for iOS, it uses the [MailCore 2](http://libmailcore.com/) library. <br/>
 
 Install the plugin by running:
 
-```
+```bash
 cordova plugin add cordova-plugin-imap
 ```
+
+## How to install on Ionic
+
+More info for installation on Ionic including `import` examples on: [Awesome Cordova Plugins](https://github.com/danielsogl/awesome-cordova-plugins#readme) 
+
+### Cordova  
+
+```bash
+# NOTE: Install Core library (once per project)
+npm install @awesome-cordova-plugins/core
+
+# Install the IMAP plugin
+ionic cordova plugin add cordova-plugin-imap
+
+# Install the Awesome Cordova Plugins TypeScript wrapper
+npm install @awesome-cordova-plugins/imap
+```
+
+### Capacitor
+
+```bash
+# NOTE: Install Core library (once per project)
+npm install @awesome-cordova-plugins/core
+
+# Install the IMAP plugin
+npm install cordova-plugin-imap
+
+# Install the Awesome Cordova Plugins TypeScript wrapper
+npm install @awesome-cordova-plugins/imap
+
+# Update native platform project(s) to include newly added plugin
+ionic cap sync
+``` 
+
 
 ## API
 
