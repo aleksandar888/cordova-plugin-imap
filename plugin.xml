@@ -23,10 +23,17 @@
         </config-file>
         <config-file parent="/*" target="AndroidManifest.xml">
             <uses-permission android:name="android.permission.INTERNET" />
+            <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
         </config-file>
         <framework src="com.sun.mail:android-mail:1.6.2" />
         <framework src="com.sun.mail:android-activation:1.6.2" />
         <source-file src="src/android/Imap.java" target-dir="src/cordova-plugin-imap/Imap" />
+        <source-file src="src/android/parseMessageBody/ParseMessageBody.java"
+                     target-dir="src/cordova-plugin-imap/Imap"/>
+        <source-file src="src/android/parseMessageBody/TextBodyPart.java"
+                     target-dir="src/cordova-plugin-imap/Imap"/>
+        <source-file src="src/android/processStreamContent/ProcessStreamContent.java"
+                     target-dir="src/cordova-plugin-imap/Imap"/>
     </platform>
 
     <platform name="ios">

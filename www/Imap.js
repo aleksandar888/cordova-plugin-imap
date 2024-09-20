@@ -47,3 +47,7 @@ exports.copyToFolder = function (sourceFolder, destinationFolder, messageNums, s
 exports.setFlag = function (folderName, messageNums, flag, status, success, error) {
     exec(success, error, 'Imap', 'setFlag', [folderName, messageNums, flag, status]);
 };
+
+exports.downloadEmailAttachment = function (folderName, messageNo, path, contentID, attachmentFileName, success, error) {
+    exec(success, error, 'Imap', 'downloadEmailAttachment', [folderName, messageNo, path, contentID, attachmentFileName]);
+};
