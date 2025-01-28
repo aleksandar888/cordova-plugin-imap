@@ -575,7 +575,7 @@ MCOIMAPSession *session;
                 errorBlock:(void (^)(NSError *))errorBlock {
 
     MCOIMAPMessagesRequestKind request = (MCOIMAPMessagesRequestKindHeaders | MCOIMAPMessagesRequestKindFlags);
-    MCOIndexSet *uidSet = [MCOIndexSet indexSetWithRange:MCORangeMake(uid, UINT64_MAX)];
+    MCOIndexSet *uidSet = [MCOIndexSet indexSetWithRange:MCORangeMake(uid, 0)];
 
     MCOIMAPFetchMessagesOperation *fetchMessagesHeadersOperation = [currentSession fetchMessagesOperationWithFolder:folderName
                                                                                                         requestKind:request
@@ -630,11 +630,11 @@ MCOIMAPSession *session;
 
     NSMutableSet *allRecipientsResult = [NSMutableSet set];
 
-    NSArray *toRecepients = [Imap parseAddressHeader:message.header.to];
+    NSArray *toRecipients = [Imap parseAddressHeader:message.header.to];
     NSArray *ccRecipients = [Imap parseAddressHeader:message.header.cc];
     NSArray *bccRecipients = [Imap parseAddressHeader:message.header.bcc];
 
-    [allRecipientsResult addObjectsFromArray:toRecepients];
+    [allRecipientsResult addObjectsFromArray:toRecipients];
     [allRecipientsResult addObjectsFromArray:ccRecipients];
     [allRecipientsResult addObjectsFromArray:bccRecipients];
 
@@ -656,19 +656,19 @@ MCOIMAPSession *session;
                 @"content": message.plainTextBodyRendering
         })];
 
-        for (MCOAttachment *atachmentPart in message.attachments) {
+        for (MCOAttachment *attachmentPart in message.attachments) {
 
             [fullContent addObject:(@{
-                    @"type": atachmentPart.mimeType,
-                    @"fileName": atachmentPart.filename
+                    @"type": attachmentPart.mimeType,
+                    @"fileName": attachmentPart.filename
             })];
         }
 
-        for (MCOAttachment *htmlAtachement in message.htmlInlineAttachments) {
+        for (MCOAttachment *htmlAttachment in message.htmlInlineAttachments) {
 
             [fullContent addObject:(@{
-                    @"type": htmlAtachement.mimeType,
-                    @"fileName": htmlAtachement.filename
+                    @"type": htmlAttachment.mimeType,
+                    @"fileName": htmlAttachment.filename
             })];
         }
 
@@ -767,6 +767,72 @@ MCOIMAPSession *session;
             [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
         }
     }];
+}
+
+- (void)downloadEmailAttachment:(CDVInvokedUrlCommand *)command {
+  [self.commandDelegate runInBackground:^{
+    __block CDVPluginResult *pluginResult = nil;
+
+      @try {
+          [Imap checkSessionStatus:session];
+
+          NSString *folderName = [command.arguments objectAtIndex:0];
+          int uid = [[command.arguments objectAtIndex:1] intValue];
+          NSString *path = [command.arguments objectAtIndex:2];
+          NSString *fileName = [command.arguments objectAtIndex:3];
+
+          __block BOOL result = false;
+
+          if(fileName == nil || [fileName isEqual:[NSNull null]] || [fileName length] == 0) {
+             @throw [NSException exceptionWithName:@"Invalid Parameter" reason:@"Failed: Please provide a 'fileName'" userInfo:nil];
+          }
+
+          [Imap getMessageContent:session :folderName :uid completeBlock:^(NSData *contentData) {
+
+              MCOMessageParser *message = [MCOMessageParser messageParserWithData:contentData];
+
+              for (MCOAttachment *attachment in message.attachments) {
+
+                  if([fileName isEqualToString:attachment.filename]) {
+
+                      NSString *attachmentPath = [path stringByAppendingPathComponent:attachment.filename];
+                      BOOL fileExists = [[NSFileManager defaultManager] fileExistsAtPath:attachmentPath];
+
+                      if (fileExists) {
+
+                          int index = 1;
+
+                          NSString *fileNameWithoutExtension = [attachment.filename stringByDeletingPathExtension];
+                          NSString *fileExtension = [attachment.filename pathExtension];
+
+                          while(fileExists) {
+                              attachmentPath = [path stringByAppendingPathComponent:[NSString stringWithFormat:@"%@ (%d).%@", fileNameWithoutExtension, index, fileExtension]];
+                              fileExists = [[NSFileManager defaultManager] fileExistsAtPath:attachmentPath];
+                              index++;
+                          }
+                      }
+
+                      [attachment.data writeToFile:attachmentPath atomically:YES];
+                      result = true;
+
+                      break;
+                  }
+              }
+              pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsBool:result];
+              [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+          }
+                       errorBlock:^(NSError *error) {
+
+              pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR
+                                               messageAsString:[error localizedDescription]];
+              [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+          }];
+      } @catch (NSException *exception) {
+          pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_JSON_EXCEPTION
+                                           messageAsString:[exception reason]];
+          [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+    }
+  }];
 }
 
 + (BOOL)expungeFolderWhenSettingDeletedFlag:(NSString *)folderName {
