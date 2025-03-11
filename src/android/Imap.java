@@ -5,6 +5,7 @@ import org.apache.cordova.PluginResult.Status;
 import org.apache.cordova.PluginResult;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 
 import java.util.Arrays;
@@ -133,10 +134,10 @@ public class Imap extends CordovaPlugin {
             String folderName = args.getString(0);
             int messageNo = Integer.parseInt(args.getString(1));
             String path = args.getString(2);
-            String contentID = args.getString(3).equals("null") ? null : args.getString(3);
-            String attachmentFileName = args.getString(4).equals("null") ? null : args.getString(4);
+            String fileName = args.getString(3).equals("null") ? null : args.getString(3);
+            String contentID = args.getString(4).equals("null") ? null : args.getString(4);
 
-            this.downloadEmailAttachment(folderName, messageNo, path, contentID, attachmentFileName, callbackContext);
+            this.downloadEmailAttachment(folderName, messageNo, path, contentID, fileName, callbackContext);
             return true;
         }
         return false;
@@ -571,12 +572,12 @@ public class Imap extends CordovaPlugin {
     }
 
     private void downloadEmailAttachment(String folderName, int messageNo, String path, String contentID,
-                                         String attachmentFileName, CallbackContext callbackContext) {
+                                         String fileName, CallbackContext callbackContext) {
         cordova.getThreadPool().execute(new Runnable() {
             public void run() {
                 try {
-                    if (contentID == null && attachmentFileName == null)
-                        throw new Exception("Failed: Please provide a 'contentID' or 'attachmentFileName'");
+                    if (contentID == null && fileName == null)
+                        throw new Exception("Failed: Please provide a 'contentID' or 'fileName'");
 
                     Folder emailFolder = store.getFolder(folderName);
                     emailFolder.open(Folder.READ_ONLY);
@@ -585,13 +586,19 @@ public class Imap extends CordovaPlugin {
                     MimeMultipart messageContent = (MimeMultipart) message.getContent();
 
                     MimeBodyPart attachment = contentID == null ?
-                            getAttachmentByName(messageContent, attachmentFileName) :
+                            getAttachmentByName(messageContent, fileName) :
                             (MimeBodyPart) messageContent.getBodyPart(contentID);
 
                     if (attachment != null && (Part.ATTACHMENT.equalsIgnoreCase(attachment.getDisposition())
                             || attachment.getFileName() != null)) {
 
-                        attachment.saveFile(path + File.separator + MimeUtility.decodeText(attachment.getFileName()));
+                        attachment.saveFile(getOrCreateUniqueFileName(path, MimeUtility.decodeText(attachment.getFileName())));
+
+                        callbackContext.sendPluginResult(new PluginResult(Status.OK, true));
+                    } else {
+                        byte[] result = new InlineAttachmentHandler().getInlineAttachmentContentData(message, fileName);
+
+                        saveByteFile(getOrCreateUniqueFileName(path, fileName), result);
 
                         callbackContext.sendPluginResult(new PluginResult(Status.OK, true));
                     }
@@ -616,7 +623,40 @@ public class Imap extends CordovaPlugin {
                     return messagePart;
                 }
             }
-            throw new Exception("Cannot find the attachment: " + fileName);
+            return null;
+        } catch (Exception ex) {
+            throw ex;
+        }
+    }
+
+    private static String getOrCreateUniqueFileName(String path, String fileName) throws Exception {
+        try {
+            String filePath = path + File.separator + fileName;
+
+            File file = new File(filePath);
+
+            int index = 1;
+
+            while (file.exists() && !file.isDirectory()) {
+
+                String[] fileTokens = fileName.split("\\.(?=[^\\.]+$)");
+
+                filePath = path + File.separator + String.format("%s (%d).%s", fileTokens[0], index, fileTokens[1]);
+
+                file = new File(filePath);
+
+                index++;
+            }
+
+            return filePath;
+        } catch (Exception ex) {
+            throw ex;
+        }
+    }
+
+    private static void saveByteFile(String filePath, byte[] fileBytes) throws Exception {
+        try (FileOutputStream stream = new FileOutputStream(filePath)) {
+            stream.write(fileBytes);
         } catch (Exception ex) {
             throw ex;
         }

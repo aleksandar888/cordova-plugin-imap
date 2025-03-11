@@ -50,13 +50,13 @@ public class ParseMessageBody {
 
                 if (Part.ATTACHMENT.equalsIgnoreCase(bodyPart.getDisposition()) || bodyPart.getFileName() != null) {
                     contentData.put("contentID", bodyPart.getContentID());
-                    contentData.put("attachmentFileName", MimeUtility.decodeText(bodyPart.getFileName()));
+                    contentData.put("fileName", MimeUtility.decodeText(bodyPart.getFileName()));
                     contentData.put("type", bodyPart.getContentType());
                 } else if (bodyPart.isMimeType("text/*")) {
                     contentData = new TextBodyPart().parse(bodyPart);
                 } else if (bodyPart.isMimeType("IMAGE/*")) {
                     contentData.put("type", bodyPart.getContentType());
-                    contentData.put("content", new ProcessStreamContent().readBase64Image(bodyPart.getContent(), bodyPart.getContentType()));
+                    contentData.put("fileName", MimeUtility.decodeText(bodyPart.getFileName()));
                 } else if (bodyPart.isMimeType("multipart/related")) {
                     JSONArray result = parseMultipartRelatedBody((MimeMultipart) bodyPart.getContent());
 
@@ -98,8 +98,7 @@ public class ParseMessageBody {
                     contentData = new TextBodyPart().parse(bodyPart);
                 } else if (bodyPart.isMimeType("IMAGE/*")) {
                     contentData.put("type", bodyPart.getContentType());
-                    contentData.put("content",
-                            new ProcessStreamContent().readBase64Image(bodyPart.getContent(), bodyPart.getContentType()));
+                    contentData.put("fileName", MimeUtility.decodeText(bodyPart.getFileName()));
                 } else if (bodyPart.isMimeType("multipart/related")) {
                     JSONArray result = parseMultipartRelatedBody((MimeMultipart) bodyPart.getContent());
 
@@ -135,7 +134,7 @@ public class ParseMessageBody {
                     contentData = new TextBodyPart().parse(bodyPart);
                 } else if (bodyPart.isMimeType("IMAGE/*")) {
                     contentData.put("type", bodyPart.getContentType());
-                    contentData.put("content", new ProcessStreamContent().readBase64Image(bodyPart.getContent(), bodyPart.getContentType()));
+                    contentData.put("fileName", MimeUtility.decodeText(bodyPart.getFileName()));
                 } else if (bodyPart.isMimeType("multipart/alternative")) {
                     JSONArray result = parseMultipartAlternativeBody((Multipart) bodyPart.getContent());
 

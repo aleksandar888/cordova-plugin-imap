@@ -2,7 +2,6 @@ import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.stream.Collectors;
-import java.util.Base64;
 
 import com.sun.mail.util.BASE64DecoderStream;
 
@@ -13,12 +12,7 @@ public class ProcessStreamContent {
         return new BufferedReader(new InputStreamReader(stream)).lines().collect(Collectors.joining("\n"));
     }
 
-    public static String readBase64Image(Object bodyPart, String contentType) throws Exception {
-        byte[] encode = toByteArray((BASE64DecoderStream) bodyPart);
-        return "data:" + getImageType(contentType) + ";base64," + new String(Base64.getEncoder().encode(encode));
-    }
-
-    private static byte[] toByteArray(BASE64DecoderStream bodyPartStream) throws Exception {
+    public static byte[] toByteArray(BASE64DecoderStream bodyPartStream) throws Exception {
         byte[] data = new byte[1024];
         int count = bodyPartStream.read(data);
         int startPos = 0;
