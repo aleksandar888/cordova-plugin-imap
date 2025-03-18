@@ -785,7 +785,8 @@ MCOIMAPSession *session;
           NSString *folderName = [command.arguments objectAtIndex:0];
           int uid = [[command.arguments objectAtIndex:1] intValue];
           NSString *path = [command.arguments objectAtIndex:2];
-          __block NSString *fileName = [command.arguments objectAtIndex:3];
+          BOOL replaceIfDuplicate = [[command.arguments objectAtIndex:3] boolValue];
+          __block NSString *fileName = [command.arguments objectAtIndex:4];
 
           __block BOOL result = false;
 
@@ -820,7 +821,7 @@ MCOIMAPSession *session;
               }
 
               if(attachmentData != nil) {
-                  [Imap saveFileAttachment:attachmentData :fileName :path];
+                  [Imap saveFileAttachment:attachmentData :fileName :path :replaceIfDuplicate];
                   result = true;
               }
 
@@ -841,22 +842,25 @@ MCOIMAPSession *session;
   }];
 }
 
-+ (void) saveFileAttachment:(NSData *) attachmentData :(NSString *) fileName :(NSString *) path  {
-    @try{
++ (void) saveFileAttachment:(NSData *) attachmentData :(NSString *) fileName :(NSString *) path :(BOOL) replaceIfDuplicate {
+    @try {
         NSString *attachmentPath = [path stringByAppendingPathComponent:fileName];
-        BOOL fileExists = [[NSFileManager defaultManager] fileExistsAtPath:attachmentPath];
 
-        if (fileExists) {
+        if(!replaceIfDuplicate) {
+            BOOL fileExists = [[NSFileManager defaultManager] fileExistsAtPath:attachmentPath];
 
-            int index = 1;
+            if (fileExists) {
 
-            NSString *fileNameWithoutExtension = [fileName stringByDeletingPathExtension];
-            NSString *fileExtension = [fileName pathExtension];
+                int index = 1;
 
-            while(fileExists) {
-                attachmentPath = [path stringByAppendingPathComponent:[NSString stringWithFormat:@"%@ (%d).%@", fileNameWithoutExtension, index, fileExtension]];
-                fileExists = [[NSFileManager defaultManager] fileExistsAtPath:attachmentPath];
-                index++;
+                NSString *fileNameWithoutExtension = [fileName stringByDeletingPathExtension];
+                NSString *fileExtension = [fileName pathExtension];
+
+                while(fileExists) {
+                    attachmentPath = [path stringByAppendingPathComponent:[NSString stringWithFormat:@"%@ (%d).%@", fileNameWithoutExtension, index, fileExtension]];
+                    fileExists = [[NSFileManager defaultManager] fileExistsAtPath:attachmentPath];
+                    index++;
+                }
             }
         }
 

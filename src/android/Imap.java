@@ -134,10 +134,11 @@ public class Imap extends CordovaPlugin {
             String folderName = args.getString(0);
             int messageNo = Integer.parseInt(args.getString(1));
             String path = args.getString(2);
-            String fileName = args.getString(3).equals("null") ? null : args.getString(3);
-            String contentID = args.getString(4).equals("null") ? null : args.getString(4);
+            boolean replaceIfDuplicate = Boolean.parseBoolean(args.getString(3));
+            String fileName = args.getString(4).equals("null") || args.getString(4).equals("") ? null : args.getString(4);
+            String contentID = args.getString(5).equals("null") || args.getString(5).equals("") ? null : args.getString(5);
 
-            this.downloadEmailAttachment(folderName, messageNo, path, contentID, fileName, callbackContext);
+            this.downloadEmailAttachment(folderName, messageNo, path, replaceIfDuplicate, contentID, fileName, callbackContext);
             return true;
         }
         return false;
@@ -571,8 +572,8 @@ public class Imap extends CordovaPlugin {
         });
     }
 
-    private void downloadEmailAttachment(String folderName, int messageNo, String path, String contentID,
-                                         String fileName, CallbackContext callbackContext) {
+    private void downloadEmailAttachment(String folderName, int messageNo, String path, boolean replaceIfDuplicate,
+                                         String contentID, String fileName, CallbackContext callbackContext) {
         cordova.getThreadPool().execute(new Runnable() {
             public void run() {
                 try {
@@ -592,13 +593,13 @@ public class Imap extends CordovaPlugin {
                     if (attachment != null && (Part.ATTACHMENT.equalsIgnoreCase(attachment.getDisposition())
                             || attachment.getFileName() != null)) {
 
-                        attachment.saveFile(getOrCreateUniqueFileName(path, MimeUtility.decodeText(attachment.getFileName())));
+                        attachment.saveFile(createFilePathWithFileName(replaceIfDuplicate, path, MimeUtility.decodeText(attachment.getFileName())));
 
                         callbackContext.sendPluginResult(new PluginResult(Status.OK, true));
                     } else {
                         byte[] result = new InlineAttachmentHandler().getInlineAttachmentContentData(message, fileName);
 
-                        saveByteFile(getOrCreateUniqueFileName(path, fileName), result);
+                        saveByteFile(createFilePathWithFileName(replaceIfDuplicate, path, fileName), result);
 
                         callbackContext.sendPluginResult(new PluginResult(Status.OK, true));
                     }
@@ -629,9 +630,13 @@ public class Imap extends CordovaPlugin {
         }
     }
 
-    private static String getOrCreateUniqueFileName(String path, String fileName) throws Exception {
+    private static String createFilePathWithFileName(boolean replaceIfDuplicate, String path, String fileName) throws Exception {
         try {
             String filePath = path + File.separator + fileName;
+
+            if (replaceIfDuplicate) {
+                return filePath;
+            }
 
             File file = new File(filePath);
 

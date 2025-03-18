@@ -20,7 +20,7 @@ exports.getMessageCountByFolderName = function (folderName, success, error) {
     exec(success, error, 'Imap', 'getMessageCountByFolderName', [folderName]);
 };
 
-exports.searchMessagesByDatePeriod = function (folderName, dateInMilliseconds,comparison, success, error) {
+exports.searchMessagesByDatePeriod = function (folderName, dateInMilliseconds, comparison, success, error) {
     exec(success, error, 'Imap', 'searchMessagesByDatePeriod', [folderName, dateInMilliseconds, comparison]);
 };
 
@@ -28,7 +28,7 @@ exports.listMessagesHeadersByConsecutiveNumber = function (folderName, start, en
     exec(success, error, 'Imap', 'listMessagesHeadersByConsecutiveNumber', [folderName, start, end]);
 };
 
-exports.listMessagesHeadersByDate = function (folderName, dateInMilliseconds,comparison, success, error) {
+exports.listMessagesHeadersByDate = function (folderName, dateInMilliseconds, comparison, success, error) {
     exec(success, error, 'Imap', 'listMessagesHeadersByDate', [folderName, dateInMilliseconds, comparison]);
 };
 
@@ -48,6 +48,6 @@ exports.setFlag = function (folderName, messageNums, flag, status, success, erro
     exec(success, error, 'Imap', 'setFlag', [folderName, messageNums, flag, status]);
 };
 
-exports.downloadEmailAttachment = function (folderName, messageNo, path, fileName, contentID, success, error) {
-    exec(success, error, 'Imap', 'downloadEmailAttachment', [folderName, messageNo, path, fileName, contentID]);
+exports.downloadEmailAttachment = function (folderName, messageNo, path, replaceIfDuplicate, fileName, contentID, success, error) {
+    exec(success, error, 'Imap', 'downloadEmailAttachment', [folderName, messageNo, path, replaceIfDuplicate, fileName, contentID]);
 };
