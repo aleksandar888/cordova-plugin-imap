@@ -135,8 +135,8 @@ public class Imap extends CordovaPlugin {
             int messageNo = Integer.parseInt(args.getString(1));
             String path = args.getString(2);
             boolean replaceIfDuplicate = Boolean.parseBoolean(args.getString(3));
-            String fileName = args.getString(4).equals("null") || args.getString(4).equals("") ? null : args.getString(4);
-            String contentID = args.getString(5).equals("null") || args.getString(5).equals("") ? null : args.getString(5);
+            String fileName = args.getString(4).equals("null") || args.getString(4).isEmpty() ? null : args.getString(4);
+            String contentID = args.getString(5).equals("null") || args.getString(5).isEmpty() ? null : args.getString(5);
 
             this.downloadEmailAttachment(folderName, messageNo, path, replaceIfDuplicate, contentID, fileName, callbackContext);
             return true;
