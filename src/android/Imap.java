@@ -599,9 +599,11 @@ public class Imap extends CordovaPlugin {
                     } else {
                         byte[] result = new InlineAttachmentHandler().getInlineAttachmentContentData(message, fileName);
 
-                        saveByteFile(createFilePathWithFileName(replaceIfDuplicate, path, fileName), result);
+                        if (result.length > 0) {
+                            saveByteFile(createFilePathWithFileName(replaceIfDuplicate, path, fileName), result);
 
-                        callbackContext.sendPluginResult(new PluginResult(Status.OK, true));
+                            callbackContext.sendPluginResult(new PluginResult(Status.OK, true));
+                        }
                     }
 
                     callbackContext.sendPluginResult(new PluginResult(Status.OK, false));
