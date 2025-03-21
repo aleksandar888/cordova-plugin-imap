@@ -5,6 +5,7 @@ import org.apache.cordova.PluginResult.Status;
 import org.apache.cordova.PluginResult;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 
 import java.util.Arrays;
@@ -21,6 +22,7 @@ import javax.security.auth.callback.Callback;
 
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMultipart;
+import javax.mail.internet.MimeUtility;
 import javax.mail.Part;
 import javax.mail.Multipart;
 import javax.mail.NoSuchProviderException;
@@ -44,13 +46,16 @@ public class Imap extends CordovaPlugin {
 
     private static Store store;
 
-    @Override
-    protected void pluginInitialize() {
-        this.cordova.getThreadPool().execute(new Runnable() {
-            public void run() {
-                createStoreObj();
-            }
-        });
+    public Imap() {
+        initializeStoreObject();
+    }
+
+    private static void initializeStoreObject() {
+        try {
+            store = Session.getDefaultInstance(System.getProperties()).getStore("imap");
+        } catch (NoSuchProviderException ex) {
+            ex.printStackTrace();
+        }
     }
 
     @Override
@@ -125,21 +130,37 @@ public class Imap extends CordovaPlugin {
 
             this.setFlag(folderName, messageNums, flag, status, callbackContext);
             return true;
+        } else if (action.equals("downloadEmailAttachment")) {
+            String folderName = args.getString(0);
+            int messageNo = Integer.parseInt(args.getString(1));
+            String path = args.getString(2);
+            boolean replaceIfDuplicate = Boolean.parseBoolean(args.getString(3));
+            String fileName = args.getString(4).equals("null") || args.getString(4).isEmpty() ? null : args.getString(4);
+            String contentID = args.getString(5).equals("null") || args.getString(5).isEmpty() ? null : args.getString(5);
+
+            this.downloadEmailAttachment(folderName, messageNo, path, replaceIfDuplicate, contentID, fileName, callbackContext);
+            return true;
         }
         return false;
     }
 
-    private static void createStoreObj() {
+    private static Store createStoreObject(String imapConnectionType) throws NoSuchProviderException {
         try {
-            if (store == null) {
-                Properties props = System.getProperties();
-                props.setProperty("mail.store.protocol", "imaps");
+            Properties properties = System.getProperties();
+            String protocol = "imaps";
 
-                Session session = Session.getDefaultInstance(props, null);
-                store = session.getStore("imaps");
+            if (imapConnectionType != null && !imapConnectionType.isEmpty()) {
+                protocol = "imap";
+
+                properties.setProperty("mail.imap.starttls.enable", String.valueOf(imapConnectionType.equals("StartTLS")));
+                properties.setProperty("mail.imap.ssl.enable", String.valueOf(imapConnectionType.equals("TLS/SSL")));
             }
+            properties.setProperty("mail.store.protocol", protocol);
+
+            return Session.getDefaultInstance(properties)
+                    .getStore(protocol);
         } catch (NoSuchProviderException ex) {
-            ex.printStackTrace();
+            throw ex;
         }
     }
 
@@ -189,69 +210,6 @@ public class Imap extends CordovaPlugin {
 
             return jsonArray;
         } catch (Exception e) {
-            return new JSONArray();
-        }
-    }
-
-    private static JSONArray getTextFromMimeMultipart(Object body, String contentType) {
-        try {
-            JSONArray fullContent = new JSONArray();
-
-            if (body.getClass().equals(String.class)) {
-                JSONObject contentData = new JSONObject();
-
-                contentData.put("type", contentType);
-                contentData.put("content", body);
-
-                fullContent.put(contentData);
-            } else {
-                MimeMultipart mimeMultipart = (MimeMultipart) body;
-
-                int count = mimeMultipart.getCount();
-
-                for (int i = 0; i < count; i++) {
-                    JSONObject contentData = new JSONObject();
-
-                    BodyPart bodyPart = mimeMultipart.getBodyPart(i);
-                    if (bodyPart.isMimeType("text/plain")) {
-                        contentData.put("type", "text/plain");
-                        contentData.put("content", bodyPart.getContent());
-                    } else if (bodyPart.isMimeType("text/html")) {
-                        contentData.put("type", "text/html");
-                        contentData.put("content", bodyPart.getContent());
-                    } else if (bodyPart.getContent() instanceof MimeMultipart) {
-                        if (bodyPart.getContent() instanceof Multipart) {
-
-                            Multipart multipart = (Multipart) body;
-
-                            for (int j = 0; j < multipart.getCount(); j++) {
-                                Part part = multipart.getBodyPart(j);
-                                String disposition = part.getDisposition();
-
-                                if ((disposition != null) &&
-                                        ((disposition.equalsIgnoreCase(Part.ATTACHMENT) ||
-                                                (disposition.equalsIgnoreCase(Part.INLINE))))) {
-                                    MimeBodyPart mimeBodyPart = (MimeBodyPart) part;
-                                    String fileName = mimeBodyPart.getFileName();
-
-                                    contentData.put("type", mimeBodyPart.getContentType());
-                                    contentData.put("fileName", fileName);
-                                    contentData.put("content", mimeBodyPart);
-                                }
-                            }
-                        }
-
-                        fullContent = getTextFromMimeMultipart((Object) bodyPart.getContent(), contentType);
-                    }
-
-                    if (contentData.length() > 0) {
-                        fullContent.put(contentData);
-                    }
-                }
-            }
-
-            return fullContent;
-        } catch (Exception ex) {
             return new JSONArray();
         }
     }
@@ -320,7 +278,7 @@ public class Imap extends CordovaPlugin {
         return resultData;
     }
 
-    private static JSONObject parseFullMessage(Message message) throws MessagingException, JSONException, IOException {
+    private static JSONObject parseFullMessage(Message message) throws MessagingException, JSONException, IOException, Exception {
         JSONObject resultData = new JSONObject();
 
         resultData.put("messageNumber", message.getMessageNumber());
@@ -341,7 +299,7 @@ public class Imap extends CordovaPlugin {
         resultData.put("lineCount", message.getLineCount());
         resultData.put("allMessageHeaders", parseAllMessageHeaders(message));
         resultData.put("contentType", parseStringResult(message.getContentType()));
-        resultData.put("bodyContent", getTextFromMimeMultipart(message.getContent(), message.getContentType()));
+        resultData.put("bodyContent", new ParseMessageBody().getBodyContent(message));
         resultData.put("size", message.getSize());
 
         return resultData;
@@ -356,8 +314,12 @@ public class Imap extends CordovaPlugin {
                     if (clientData != null) {
                         String host = clientData.getString("host");
                         int port = ((clientData.has("port") && !clientData.isNull("port"))) ? Integer.parseInt(clientData.getString("port")) : 993;
+                        String imapConnectionType = clientData.has("connectionType") ? clientData.getString("connectionType") : "";
                         String user = clientData.getString("user");
                         String password = clientData.getString("password");
+
+                        if (!store.isConnected())
+                            store = createStoreObject(imapConnectionType);
 
                         store.connect(host, port, user, password);
 
@@ -520,15 +482,11 @@ public class Imap extends CordovaPlugin {
                 try {
                     String host = clientData.getString("host");
                     int port = ((clientData.has("port") && !clientData.isNull("port"))) ? Integer.parseInt(clientData.getString("port")) : 993;
+                    String imapConnectionType = clientData.has("connectionType") ? clientData.getString("connectionType") : "";
                     String user = clientData.getString("user");
                     String password = clientData.getString("password");
 
-                    Properties props = System.getProperties();
-                    props.setProperty("mail.store.protocol", "imaps");
-
-                    Session session = Session.getDefaultInstance(props, null);
-
-                    Store storeObj = session.getStore("imaps");
+                    Store storeObj = createStoreObject(imapConnectionType);
 
                     try {
                         storeObj.connect(host, port, user, password);
@@ -612,6 +570,103 @@ public class Imap extends CordovaPlugin {
                 }
             }
         });
+    }
+
+    private void downloadEmailAttachment(String folderName, int messageNo, String path, boolean replaceIfDuplicate,
+                                         String contentID, String fileName, CallbackContext callbackContext) {
+        cordova.getThreadPool().execute(new Runnable() {
+            public void run() {
+                try {
+                    if (contentID == null && fileName == null)
+                        throw new Exception("Failed: Please provide a 'contentID' or 'fileName'");
+
+                    Folder emailFolder = store.getFolder(folderName);
+                    emailFolder.open(Folder.READ_ONLY);
+
+                    Message message = emailFolder.getMessage(messageNo);
+                    MimeMultipart messageContent = (MimeMultipart) message.getContent();
+
+                    MimeBodyPart attachment = contentID == null ?
+                            getAttachmentByName(messageContent, fileName) :
+                            (MimeBodyPart) messageContent.getBodyPart(contentID);
+
+                    if (attachment != null && (Part.ATTACHMENT.equalsIgnoreCase(attachment.getDisposition())
+                            || attachment.getFileName() != null)) {
+
+                        attachment.saveFile(createFilePathWithFileName(replaceIfDuplicate, path, MimeUtility.decodeText(attachment.getFileName())));
+
+                        callbackContext.sendPluginResult(new PluginResult(Status.OK, true));
+                    } else {
+                        byte[] result = new InlineAttachmentHandler().getInlineAttachmentContentData(message, fileName);
+
+                        if (result.length > 0) {
+                            saveByteFile(createFilePathWithFileName(replaceIfDuplicate, path, fileName), result);
+
+                            callbackContext.sendPluginResult(new PluginResult(Status.OK, true));
+                        }
+                    }
+
+                    callbackContext.sendPluginResult(new PluginResult(Status.OK, false));
+                } catch (Exception ex) {
+                    callbackContext.error("Failed " + ex);
+                }
+            }
+        });
+    }
+
+    private MimeBodyPart getAttachmentByName(MimeMultipart messageContent, String fileName) throws Exception {
+        try {
+            for (int partCount = 0; partCount < messageContent.getCount(); partCount++) {
+
+                MimeBodyPart messagePart = (MimeBodyPart) messageContent.getBodyPart(partCount);
+
+                if (Part.ATTACHMENT.equalsIgnoreCase(messagePart.getDisposition()) &&
+                        MimeUtility.decodeText(messagePart.getFileName()).replaceAll("\\s+", "")
+                                .equals(fileName.replaceAll("\\s+", ""))) {
+                    return messagePart;
+                }
+            }
+            return null;
+        } catch (Exception ex) {
+            throw ex;
+        }
+    }
+
+    private static String createFilePathWithFileName(boolean replaceIfDuplicate, String path, String fileName) throws Exception {
+        try {
+            String filePath = path + File.separator + fileName;
+
+            if (replaceIfDuplicate) {
+                return filePath;
+            }
+
+            File file = new File(filePath);
+
+            int index = 1;
+
+            while (file.exists() && !file.isDirectory()) {
+
+                String[] fileTokens = fileName.split("\\.(?=[^\\.]+$)");
+
+                filePath = path + File.separator + String.format("%s (%d).%s", fileTokens[0], index, fileTokens[1]);
+
+                file = new File(filePath);
+
+                index++;
+            }
+
+            return filePath;
+        } catch (Exception ex) {
+            throw ex;
+        }
+    }
+
+    private static void saveByteFile(String filePath, byte[] fileBytes) throws Exception {
+        try (FileOutputStream stream = new FileOutputStream(filePath)) {
+            stream.write(fileBytes);
+        } catch (Exception ex) {
+            throw ex;
+        }
     }
 }
 

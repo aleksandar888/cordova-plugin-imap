@@ -26,4 +26,6 @@
 
 - (void)setFlag:(CDVInvokedUrlCommand *)command;
 
+- (void)downloadEmailAttachment:(CDVInvokedUrlCommand *)command;
+
 @end
