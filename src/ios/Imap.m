@@ -795,7 +795,7 @@ MCOIMAPSession *session;
           }
 
           [Imap getMessageContent:session :folderName :uid completeBlock:^(NSData *contentData) {
-
+            @try {
               MCOMessageParser *message = [MCOMessageParser messageParserWithData:contentData];
 
               NSData *attachmentData = nil;
@@ -821,15 +821,19 @@ MCOIMAPSession *session;
               }
 
               if(attachmentData != nil) {
-                  [Imap saveFileAttachment:attachmentData :fileName :path :replaceIfDuplicate];
-                  result = true;
+                result = [Imap saveFileAttachment:attachmentData :fileName :path :replaceIfDuplicate];
               }
 
               pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsBool:result];
               [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+
+            } @catch (NSException *exception) {
+              pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_JSON_EXCEPTION
+                                               messageAsString:[exception reason]];
+              [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+            }
           }
           errorBlock:^(NSError *error) {
-
               pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR
                                                messageAsString:[error localizedDescription]];
               [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
@@ -842,8 +846,7 @@ MCOIMAPSession *session;
   }];
 }
 
-+ (void) saveFileAttachment:(NSData *) attachmentData :(NSString *) fileName :(NSString *) path :(BOOL) replaceIfDuplicate {
-    @try {
++ (BOOL) saveFileAttachment:(NSData *) attachmentData :(NSString *) fileName :(NSString *) path :(BOOL) replaceIfDuplicate {
         NSString *attachmentPath = [path stringByAppendingPathComponent:fileName];
 
         if(!replaceIfDuplicate) {
@@ -864,10 +867,17 @@ MCOIMAPSession *session;
             }
         }
 
-        [attachmentData writeToFile:attachmentPath atomically:YES];
-    } @catch (NSException *exception) {
-        @throw [exception reason];
-    }
+      NSError *error = nil;
+
+      BOOL result = [attachmentData writeToFile:attachmentPath options:NSDataWritingAtomic error:&error];
+
+      if (!result && error != nil) {
+        @throw [NSException exceptionWithName:error.accessibilityLabel
+                                       reason:error.localizedDescription
+                                     userInfo:error.userInfo];
+      }
+
+      return result;
 }
 
 + (BOOL)expungeFolderWhenSettingDeletedFlag:(NSString *)folderName {
