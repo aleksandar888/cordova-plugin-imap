@@ -69,7 +69,7 @@ ionic cap sync
 - listMessagesHeadersByDate(folderName, dateInMilliseconds, [comparison](#ComparisonTerm) : <code>enum</code>, success,
   error) - ([MessageHeaders](#messageHeaders)[]) - Returns messages' headers data.
 - getFullMessageData(folderName, messageNumber, success, error) - ([Message](#message)) - Returns the full message data
-  inclucing its attachments.
+  including its attachments.
 - getFullMessageDataOnNewSession([config](#config), folderName, messageNumber, success, error) - ([Message](#message)) -
   Returns the full message data inclucing its attachments.
 - copyToFolder (sourceFolder, destinationFolder, messageNums, success, error) - (boolean) - Copy messages to a desired
@@ -77,7 +77,9 @@ ionic cap sync
 - setFlag (folderName, messageNums, [flag](#flag) : <code>enum</code>, status, success,
   error) - ([ModificationResult](#modificationresult)) - Sets a flag on a message.
   This method can also be used for deleting messages.
-- downloadEmailAttachment(folderName, messageNo, path, contentID, attachmentFileName, success, error) - Download email attachment using "contentID" or "attachmentFileName". The "contentID" is preferred if available.
+- downloadEmailAttachment(folderName, messageNo, path, replaceIfDuplicate, fileName, contentID, success, error) -
+  Download email attachment using "fileName" or "contentID" – Android only. "contentID" is preferred when available, and
+  it works only on Android.
 
 ## Data types
 
@@ -156,11 +158,12 @@ ionic cap sync
 
 #### Content
 
-| Param    | Type                | Description                    |
-|----------|---------------------|--------------------------------|
-| type     | <code>string</code> | Content data type              |
-| fileName | <code>string</code> | Optional. The name of the file |
-| content  | <code>string</code> | Message's content              |
+| Param     | Type                | Description                                                                                                                                           |
+|-----------|---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
+| type      | <code>string</code> | Content data type                                                                                                                                     |
+| fileName  | <code>string</code> | Optional. The name of the file, if the message content is a file attachment                                                                           |
+| contentID | <code>string</code> | Android ONLY. Optional. "contentID" is a unique identifier for the attachment, used to fetch the file. It is preferred over "fileName" when available |
+| content   | <code>string</code> | Optional. Message's content                                                                                                                           |
 
 #### ModificationResult
 
@@ -217,4 +220,4 @@ Comparison Operators. Used for listing messages by date period.
 ## Thank you
 
 Thank you for using this plugin. <br>
-If you have any suggestions on how we can improve the plugin (missing feature or bug...), feel free to contact us.
+If you have any suggestions on how I can improve the plugin (missing features, bugs, etc.), feel free to contact me.
